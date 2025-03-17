@@ -89,18 +89,18 @@ class MangaDex:
             "sec-fetch-mode": "cors",
             "sec-fetch-site": "same-site",
             "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
-        }
+    }
 
         response = requests.get(
             f"https://api.mangadex.org/manga/{manga_id}/feed?limit={self.feed_size}&includes[]=scanlation_group&includes[]=user&order[volume]=desc&order[chapter]=desc&offset=0&contentRating[]=safe&contentRating[]=suggestive&contentRating[]=erotica&contentRating[]=pornographic",
             headers=headers,
         )
-
+        
         if response.status_code != 200:
             raise Exception("MangaDex fora do ar ou em manutenção.")
 
         chapters = response.json()
-
+        
         # Extract chapter IDs that match the specified language
         self.chapters = {}
         if "data" in chapters:
@@ -114,7 +114,7 @@ class MangaDex:
                     )
         else:
             print("No chapters data found in the response")
-
+    
     def download_chapter(self, chapter_id: str, chapter_name: str = None):
         chapter_pages, chapter_hash = self.get_chapter_pages(chapter_id)
         headers = {
@@ -123,7 +123,7 @@ class MangaDex:
             "sec-ch-ua-platform": '"Windows"',
             "Referer": "https://mangadex.org/",
             "Referrer-Policy": "strict-origin",
-            # You might want to keep these from your existing headers for consistency
+        # You might want to keep these from your existing headers for consistency
             "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
             "accept": "*/*",
         }
@@ -142,10 +142,10 @@ class MangaDex:
                 page_url,
                 headers=headers,
             )
-
+            
             if response.status_code != 200:
                 raise Exception(f"Failed to download image: {response.status_code}")
-
+            
             if not os.path.exists(f"{self.temp_dir}/{chapter_name.replace(' ', '')}"):
                 os.makedirs(f"{self.temp_dir}/{chapter_name.replace(' ', '')}")
 
@@ -174,8 +174,8 @@ class MangaDex:
             "sec-fetch-mode": "cors",
             "sec-fetch-site": "same-site",
             "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
-        }
-
+    }
+        
         params = {
             "forcePort443": "false",
         }
@@ -191,9 +191,9 @@ class MangaDex:
                 "Erro ao obter capitulo. Status da requisição: "
                 + str(response.status_code)
             )
-
+    
         return response.json()["chapter"]["data"], response.json()["chapter"]["hash"]
-
+    
     def download_manga(self, retry_count=0, chapters_to_retry=None):
         # If this is a retry, use the chapters passed in
         if chapters_to_retry:
@@ -381,6 +381,7 @@ def version():
     """
     console.print("MangaDex Downloader v0.1.0")
 
-
+        
 if __name__ == "__main__":
     app()
+    
