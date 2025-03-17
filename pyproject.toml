@@ -1,5 +1,5 @@
 [project]
-name = "mangadexdl"
+name = "mangadl"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
@@ -16,4 +16,4 @@ dependencies = [
 ]
 
 [project.scripts]
-mangadexdl = "main:app"
+mangadl = "main:app"

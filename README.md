@@ -22,12 +22,12 @@ pipx install git+https://github.com/DavyCosta701/mangadl.git --pip uv
 After installation, you can run the application from anywhere on your system:
 
 ```powershell
-mangadexdl
+mangadl
 ```
 
 To check the version:
 ```powershell
-mangadexdl version
+mangadl version
 ```
 
 ## Updating
@@ -35,7 +35,7 @@ mangadexdl version
 When updates are available, you can upgrade your installation with:
 
 ```powershell
-pipx upgrade mangadexdl
+pipx upgrade mangadl
 ```
 
 ## Development
@@ -44,8 +44,8 @@ If you want to contribute to this project:
 
 1. **Clone the repository**
    ```powershell
-   git clone https://github.com/YOUR_USERNAME/mangadexdl.git
-   cd mangadexdl
+   git clone https://github.com/YOUR_USERNAME/mangadl.git
+   cd mangadl
    ```
 
 2. **Set up a virtual environment**
