@@ -8,6 +8,7 @@ import img2pdf
 import typer
 from rich.console import Console
 from tqdm import tqdm
+from rich import print
 
 app = typer.Typer(help="MangaDex Downloader - Download manga chapters from MangaDex")
 console = Console()
