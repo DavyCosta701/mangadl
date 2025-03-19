@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+import json
 import os
 from curl_cffi import requests
 from typing import List, Tuple
@@ -20,11 +21,12 @@ class MangaDex:
     language: str = "pt-br"
     output_dir: str = "output"
     temp_dir: str = "temp"
-    max_retries: int = 3
+    max_retries: int = 5
 
-    def __get_feed_size(self):
+
+    def get_chapters(self):
         manga_id = self.manga_url.split("/")[-2]
-
+        
         headers = {
             "accept": "*/*",
             "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
@@ -40,81 +42,63 @@ class MangaDex:
             "sec-fetch-site": "same-site",
             "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
         }
-
-        response = requests.get(
-            f"https://api.mangadex.org/manga/{manga_id}/feed?limit=1&includes[]=scanlation_group&includes[]=user&order[volume]=desc&order[chapter]=desc&offset=0&contentRating[]=safe&contentRating[]=suggestive&contentRating[]=erotica&contentRating[]=pornographic",
-            headers=headers,
-        )
-
-        if response.status_code != 200:
-            raise Exception("Incapaz de obter total de capitulos.")
-
-        data = response.json()
-
-        # Check if we have data and at least one chapter
-        if "data" not in data or not data["data"]:
-            return 0
-
-        first_chapter = data["data"][0]
-        if (
-            "attributes" not in first_chapter
-            or "chapter" not in first_chapter["attributes"]
-        ):
-            return 0
-
-        # Get the chapter number and convert to integer
-        try:
-            chapter_number = int(float(first_chapter["attributes"]["chapter"]))
-            self.feed_size = chapter_number * 4
-            print(f"Total chapters found: {chapter_number}")
-        except (ValueError, TypeError):
-            print("Failed to parse chapter number")
-            return 0
-
-    def get_chapters(self):
-        manga_id = self.manga_url.split("/")[-2]
-
-        self.__get_feed_size()
-
-        headers = {
-            "accept": "*/*",
-            "accept-language": "pt-BR,pt;q=0.9,en-US;q=0.8,en;q=0.7",
-            "dnt": "1",
-            "origin": "https://mangadex.org",
-            "priority": "u=1, i",
-            "referer": "https://mangadex.org/",
-            "sec-ch-ua": '"Chromium";v="134", "Not:A-Brand";v="24", "Google Chrome";v="134"',
-            "sec-ch-ua-mobile": "?0",
-            "sec-ch-ua-platform": '"Windows"',
-            "sec-fetch-dest": "empty",
-            "sec-fetch-mode": "cors",
-            "sec-fetch-site": "same-site",
-            "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/134.0.0.0 Safari/537.36",
-    }
-
-        response = requests.get(
-            f"https://api.mangadex.org/manga/{manga_id}/feed?limit={self.feed_size}&includes[]=scanlation_group&includes[]=user&order[volume]=desc&order[chapter]=desc&offset=0&contentRating[]=safe&contentRating[]=suggestive&contentRating[]=erotica&contentRating[]=pornographic",
-            headers=headers,
-        )
         
-        if response.status_code != 200:
-            raise Exception("MangaDex fora do ar ou em manutenção.")
-
-        chapters = response.json()
-        
-        # Extract chapter IDs that match the specified language
+        # Initialize chapters dictionary and pagination variables
         self.chapters = {}
-        if "data" in chapters:
-            for chapter in chapters["data"]:
-                if (
-                    chapter["attributes"]["translatedLanguage"].lower()
-                    == self.language.lower()
-                ):
-                    self.chapters[f"Capítulo {chapter['attributes']['chapter']}"] = (
-                        chapter["id"]
-                    )
-        else:
-            print("No chapters data found in the response")
+        offset = 0
+        limit = 100  # Number of chapters per request
+        has_more = True
+        total_fetched = 0
+        
+        print("Fetching chapters...")
+        
+        # Paginate through all chapters
+        with tqdm(unit="chapter", desc="Loading chapters") as progress:
+            while has_more:
+                # Make request with current offset
+                response = requests.get(
+                    f"https://api.mangadex.org/manga/{manga_id}/feed?limit={limit}&includes[]=scanlation_group&includes[]=user&order[volume]=desc&order[chapter]=desc&offset={offset}&contentRating[]=safe&contentRating[]=suggestive&contentRating[]=erotica&contentRating[]=pornographic",
+                    headers=headers,
+                )
+                
+                if response.status_code != 200:
+                    if offset == 0:  # If first request fails
+                        raise Exception("MangaDex is down or under maintenance.")
+                    else:
+                        # If we already got some chapters, break and use what we have
+                        print(f"\nError fetching more chapters. Using {total_fetched} chapters already retrieved.")
+                        break
+                
+                data = response.json()
+                
+                # Extract chapter IDs that match the specified language from this batch
+                if "data" in data:
+                    batch_chapters = 0
+                    for chapter in data["data"]:
+                        if (chapter["attributes"]["translatedLanguage"].lower() == self.language.lower()):
+                            chapter_name = f"Capítulo {chapter['attributes']['chapter']}"
+                            self.chapters[chapter_name] = chapter["id"]
+                            batch_chapters += 1
+                    
+                    # Update progress
+                    progress.update(batch_chapters)
+                    total_fetched += batch_chapters
+                    
+                    # Check if we need to fetch more chapters
+                    if len(data["data"]) < limit:
+                        has_more = False  # No more chapters available
+                        break
+                    
+                    # Increment offset for next request
+                    offset += limit
+                else:
+                    # No data in response
+                    has_more = False
+        
+        print(f"Total chapters found: {len(self.chapters)}")
+        
+        if not self.chapters:
+            print(f"No chapters found in language: {self.language}")
     
     def download_chapter(self, chapter_id: str, chapter_name: str = None):
         chapter_pages, chapter_hash = self.get_chapter_pages(chapter_id)
